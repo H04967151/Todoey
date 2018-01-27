@@ -7,26 +7,59 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoListController: UITableViewController {
     
-    var itemArray = [Item]()
     let cellID = "TodoItemCell"
-    let defaults = UserDefaults.standard
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    var itemArray = [Item]()
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
 
     override func viewDidLoad() {
         super.viewDidLoad()
         loadItems()
     }
     
+    //*********** CRUD METHODS for CORE DATA***********//
+    
+    //MARK - CREATE
+    func saveItems(){
+        do{
+            try context.save()
+        }catch{
+            print("err")        }
+    }
+    
+    //MARK - READ
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()){
+        do{
+            itemArray = try context.fetch(request)
+        }catch{
+            print(error)
+        }
+        tableView.reloadData()
+    }
+    
+    //MARK - UPDATE - This is called in the DidSelectRowAtIndexPah method -- saveData() is called when cell yapped and check mark added
+    
+    
+    //MARK- DELETE
+    func deleteItem(indexPath: Int){
+        context.delete(itemArray[indexPath])
+        itemArray.remove(at: indexPath)
+    }
+    
+    //*********** CRUD METHODS for CORE DATA***********//
+    
     //MARK - IBActions
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         var textField = UITextField()
         let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
-            let newItem = Item()
+            
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
             self.itemArray.append(newItem)
             self.saveItems()
             self.tableView.reloadData()
@@ -40,31 +73,11 @@ class TodoListController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
-    func loadItems(){
-        if let data = try? Data(contentsOf: dataFilePath!){
-            let decoder = PropertyListDecoder()
-            do{
-                itemArray = try decoder.decode([Item].self, from: data)
-            }catch{
-                
-            }
-        }
-    }
-    
-    func saveItems(){
-        let encoder = PropertyListEncoder()
-        do{
-            let data = try encoder.encode(itemArray)
-            try data.write(to: dataFilePath!)
-        }catch{
-            
-        }
-    }
 }
 
+//MARK - Tableview Datasource & Tableview Delegates
 extension TodoListController{
     
-    //MARK - Tableview Datasource
     override func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
@@ -82,7 +95,6 @@ extension TodoListController{
         return cell
     }
     
-    //MARK - Tableview Delegates
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         saveItems()
@@ -90,6 +102,34 @@ extension TodoListController{
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
+    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
+        if editingStyle == .delete{
+            deleteItem(indexPath: indexPath.row)
+            tableView.deleteRows(at: [indexPath], with: .fade)
+            saveItems()
+        }
+    }
     
+    
+}
+
+//MARK - Searchbar Delegate
+extension TodoListController: UISearchBarDelegate{
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        if let searchTerm = searchBar.text{
+            request.predicate = NSPredicate(format: "title CONTAINS %@", searchTerm)
+            request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+            loadItems(with: request)
+        }
+        
+        if searchBar.text?.count == 0{
+            loadItems()
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+        }
+    }
     
 }
