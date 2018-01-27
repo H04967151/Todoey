@@ -10,13 +10,33 @@ import UIKit
 
 class TodoListController: UITableViewController {
     
-    let itemArray = ["Feed dog", "Buy dog food", "Make dinner"]
+    var itemArray = ["Feed dog", "Buy dog food", "Make dinner"]
     let cellID = "TodoItemCell"
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
     }
+    
+    //MARK - IBActions
+    @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
+        var textField = UITextField()
+        let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
+        let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
+            if let newTodo = textField.text{
+            self.itemArray.append(newTodo)
+            self.tableView.reloadData()
+            }
+        }
+        
+        alert.addAction(action)
+        alert.addTextField { (alertTextField) in
+            alertTextField.placeholder = "Add Item"
+            textField = alertTextField
+        }
+        present(alert, animated: true, completion: nil)
+    }
+    
+    
 
 }
 
